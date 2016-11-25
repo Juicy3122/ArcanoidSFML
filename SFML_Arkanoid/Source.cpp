@@ -5,5 +5,4 @@ auto main() -> int
 {
 	Game game;
 	game.Run();
-
 }
