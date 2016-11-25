@@ -69,7 +69,7 @@ void Game::Render()
 {
 	mWindow.clear();
 	mWindow.draw(mMissle.mMissle);
-	mWindow.draw(mPlayer.player_);
+	mWindow.draw(mPlayer.shape);
 	mWindow.display();
 }
 
