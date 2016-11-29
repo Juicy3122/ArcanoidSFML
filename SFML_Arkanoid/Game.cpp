@@ -1,5 +1,6 @@
 #include "Game.h"
-
+#include <vector>
+#include <algorithm>
 
 Game::Game() 
 : mWindow(sf::VideoMode(800, 600), "Arcanoid")
@@ -7,6 +8,7 @@ Game::Game()
 , mPlayer{ 400, 550 }
 {
 	mWindow.setVerticalSyncEnabled(true);
+	GenerateBricks(Brick::countBricksX, Brick::countBricksY);
 }
 
 void Game::Run()
@@ -39,9 +41,21 @@ void Game::ProcessEvents()
 	
 }
 
-bool Game::isIntersecting(Player& mA, Ball& mB)
+template<class T1, class T2> bool Game::isIntersecting(T1& mA, T2& mB)
 {
 	return mA.right() > mB.left() && mA.left() <= mB.right() && mA.bottom() >= mB.top() && mA.top() <= mB.bottom();
+}
+
+void Game::GenerateBricks(int countX, int countY)
+{
+	for (int i = 0; i < countX; i++)
+	{
+		for (int y = 0; y < countY; y++)
+		{
+			mBricks.emplace_back((i + 1)*(brickWidth + 3) + 22,
+								(y + 1)*(brickHeight + 3));
+		}
+	}
 }
 
 void Game::testCollisions()
@@ -51,7 +65,7 @@ void Game::testCollisions()
 	mMissle.speed.y = -mMissle.missleSpeed;
 	if (mMissle.x() < mPlayer.x())
 	{
-		mMissle.speed.x = - mMissle.missleSpeed;
+		mMissle.speed.x = -mMissle.missleSpeed;
 	}
 	else
 	{
@@ -59,8 +73,42 @@ void Game::testCollisions()
 	}
 }
 
+void Game::testCollisions(Brick& brick)
+{
+	if (!isIntersecting(brick, mMissle)) return;
+	brick.destroyed = true;
+
+	float overlapLeft{ brick.right() - brick.left() };
+	float overlapRight{ mMissle.right() - mMissle.left() };
+	float overlapTop{ brick.bottom() - brick.top() };
+	float overlapBottom{ brick.bottom() - brick.top() };
+
+	bool ballFromLeft(abs(overlapLeft) < abs(overlapRight));
+	bool ballFromTop(abs(overlapTop) < abs(overlapBottom));
+
+	float minOverlapX{ ballFromLeft ? overlapLeft : overlapRight };
+	float minOverlapY{ ballFromTop ? overlapTop : overlapBottom };
+
+	if (abs(minOverlapX) < abs(minOverlapY))
+		mMissle.speed.x = ballFromLeft ? -mMissle.missleSpeed : mMissle.missleSpeed;
+	else
+		mMissle.speed.y = ballFromTop ? -mMissle.missleSpeed : mMissle.missleSpeed;
+}
 void Game::Update()
 {
+	for (auto& brick : mBricks)
+	{
+		testCollisions(brick);
+	}
+
+	mBricks.erase(std::remove_if(begin(mBricks), end(mBricks),
+					[](const Brick& mBrick)
+					{
+						return mBrick.destroyed;
+					}),
+				end(mBricks));
+	
+
 	mMissle.Update();
 	mPlayer.Update();
 }
@@ -68,6 +116,10 @@ void Game::Update()
 void Game::Render()
 {
 	mWindow.clear();
+	for (auto & brick : mBricks)
+	{
+		mWindow.draw(brick.shape);
+	}
 	mWindow.draw(mMissle.mMissle);
 	mWindow.draw(mPlayer.shape);
 	mWindow.display();
